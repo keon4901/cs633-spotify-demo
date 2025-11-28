@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>CS633 Data Mining – Spotify Interactive Demo</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Google Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet" />
+
+    <!-- Chart.js from CDN (no Python needed) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+    <style>
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            font-family: "Poppins", Arial, sans-serif;
+            background: radial-gradient(circle at top, #1db954 0, #111 45%, #000 100%);
+            color: #f4f4f4;
+        }
+
+        .wrapper {
+            max-width: 1150px;
+            margin: 0 auto;
+            padding: 32px 16px 50px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        header h1 {
+            font-size: 2.2rem;
+            margin: 8px 0;
+        }
+
+        header p {
+            font-size: 0.95rem;
+            opacity: 0.9;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 6px 14px;
+            border-radius: 999px;
+            background: rgba(0, 0, 0, 0.6);
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: minmax(0, 1.2fr) minmax(0, 2fr);
+            gap: 18px;
+        }
+
+        @media (max-width: 900px) {
+            .layout {
+                grid-template-columns: minmax(0, 1fr);
+            }
+        }
+
+        .card {
+            background: rgba(0, 0, 0, 0.75);
+            border-radius: 18px;
+            padding: 18px 18px 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .card h2 {
+            font-size: 1.2rem;
+            margin-top: 0;
+            margin-bottom: 10px;
+        }
+
+        .card h3 {
+            font-size: 1.05rem;
+            margin: 14px 0 6px;
+        }
+
+        .card p, .card li {
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+
+        .card ul {
+            padding-left: 18px;
+            margin: 6px 0;
+        }
+
+        .filters label {
+            display: block;
+            font-size: 0.8rem;
+            margin: 8px 0 4px;
+            opacity: 0.9;
+        }
+
+        .filters select,
+        .filters input[type="range"] {
+            width: 100%;
+        }
+
+        .range-value {
+            font-size: 0.8rem;
+            opacity: 0.9;
+        }
+
+        .metrics {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin: 12px 0 6px;
+        }
+
+        .metric {
+            flex: 1 1 120px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 14px;
+            padding: 8px 10px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .metric span.label {
+            display: block;
+            font-size: 0.75rem;
+            opacity: 0.75;
+        }
+
+        .metric span.value {
+            font-size: 1.05rem;
+            font-weight: 600;
+        }
+
+        .chart-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+            gap: 16px;
+            margin-top: 12px;
+        }
+
+        @media (max-width: 900px) {
+            .chart-grid {
+                grid-template-columns: minmax(0, 1fr);
+            }
+        }
+
+        canvas {
+            width: 100% !important;
+            height: 280px !important;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            font-size: 0.8rem;
+        }
+
+        th, td {
+            padding: 6px 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        th {
+            text-align: left;
+            font-weight: 500;
+            opacity: 0.8;
+        }
+
+        tbody tr:nth-child(even) {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .pill-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 6px;
+        }
+
+        .pill {
+            font-size: 0.78rem;
+            padding: 4px 10px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 26px;
+            font-size: 0.78rem;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+<div class="wrapper">
+    <header>
+        <div class="badge">CS633 · Data Mining · Assignment 4</div>
+        <h1>Spotify “Vibe” Music Suggestions – Interactive Demo</h1>
+        <p>
+            One-page web application that replaces a static slide deck with interactive
+            filtering, charts, and a simple model comparison using a Spotify-style dataset.
+        </p>
+    </header>
+
+    <div class="layout">
+        <!-- LEFT: project explanation + findings -->
+        <section class="card">
+            <h2>Project & Findings</h2>
+            <p>
+                This demo explores how audio features such as energy, danceability, and
+                valence relate to musical “vibes” and track popularity. Instead of a static
+                PowerPoint, the results are shown as an interactive web page.
+            </p>
+
+            <h3>Clustering / Vibe Summary</h3>
+            <p>
+                When songs are grouped by their audio features, clear “vibe” profiles
+                appear. High-energy, high-valence tracks behave like party or feel-good
+                music and often have higher popularity. Lower-energy, more acoustic tracks
+                look more like chill or study music with moderate but stable popularity.
+            </p>
+
+            <h3>Popularity & Model Comparison</h3>
+            <p>
+                A simple comparison between a global baseline (one popularity value for
+                all songs) and a genre-based estimate shows that knowing the genre already
+                improves predictions. However, even with genre and audio features, hits
+                cannot be perfectly explained, which suggests that non-audio factors like
+                marketing, playlist placement, and artist reputation still play a major role.
+            </p>
+
+            <h3>What this demo shows</h3>
+            <ul>
+                <li>Interactive filtering by genre, minimum energy, and minimum valence.</li>
+                <li>Charts for popularity vs energy and popularity distribution.</li>
+                <li>Model-style comparison: global mean vs genre-mean popularity.</li>
+                <li>All on a single HTML file using JavaScript (no Python or server).</li>
+            </ul>
+
+            <h3>Dataset Fields</h3>
+            <div class="pill-row">
+                <span class="pill">🎵 track_name</span>
+                <span class="pill">👨‍🎤 artist_name</span>
+                <span class="pill">🎼 genre</span>
+                <span class="pill">📊 popularity</span>
+                <span class="pill">🎚️ energy</span>
+                <span class="pill">💃 danceability</span>
+                <span class="pill">😊 valence</span>
+                <span class="pill">🔊 loudness</span>
+                <span class="pill">⏱ tempo</span>
+            </div>
+        </section>
+
+        <!-- RIGHT: interactive side -->
+        <section class="card">
+            <h2>Interactive Dataset & Results</h2>
+
+            <div class="filters">
+                <label for="genreSelect">Genre</label>
+                <select id="genreSelect">
+                    <option value="ALL">All genres</option>
+                </select>
+
+                <label for="energyMin">Minimum Energy</label>
+                <span class="range-value" id="energyLabel">0.30</span>
+                <input id="energyMin" type="range" min="0" max="100" value="30" step="1" />
+
+                <label for="valenceMin">Minimum Valence</label>
+                <span class="range-value" id="valenceLabel">0.30</span>
+                <input id="valenceMin" type="range" min="0" max="100" value="30" step="1" />
+            </div>
+
+            <div class="metrics">
+                <div class="metric">
+                    <span class="label">Tracks (filtered)</span>
+                    <span class="value" id="metricTracks">–</span>
+                </div>
+                <div class="metric">
+                    <span class="label">Genres (filtered)</span>
+                    <span class="value" id="metricGenres">–</span>
+                </div>
+                <div class="metric">
+                    <span class="label">Avg. popularity</span>
+                    <span class="value" id="metricPopularity">–</span>
+                </div>
+            </div>
+
+            <div class="chart-grid">
+                <div>
+                    <h3>Popularity vs Energy</h3>
+                    <canvas id="scatterChart"></canvas>
+                </div>
+                <div>
+                    <h3>Popularity Distribution</h3>
+                    <canvas id="histChart"></canvas>
+                </div>
+            </div>
+
+            <h3 style="margin-top:18px;">Model Comparison: Global vs Genre Mean</h3>
+            <p style="font-size:0.8rem; opacity:0.85;">
+                Baseline model predicts one popularity value for all songs (global mean).
+                Genre model predicts the average popularity for each genre. Bars below show
+                these two estimates for the main genres in the filtered data.
+            </p>
+            <canvas id="modelChart"></canvas>
+
+            <h3 style="margin-top:18px;">Sample of Filtered Tracks</h3>
+            <table>
+                <thead>
+                <tr>
+                    <th>Track</th>
+                    <th>Artist</th>
+                    <th>Genre</th>
+                    <th>Energy</th>
+                    <th>Valence</th>
+                    <th>Popularity</th>
+                </tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </section>
+    </div>
+
+    <footer>
+        CS633 · Data Mining · Spotify “Vibe” Music Suggestions – One-page Interactive Demo (HTML + JS only)
+    </footer>
+</div>
+
+<script>
+    // --------------------------------------------------
+    // 1. SMALL EMBEDDED DATASET (no CSV / no server)
+    // --------------------------------------------------
+    const rawData = [
+        {track_name:"My Time's Comin'", artist_name:"A Thousand Horses", genre:"Country", popularity:45, energy:0.835, danceability:0.327, valence:0.385, loudness:-4.952, tempo:171.795},
+        {track_name:"Neon Light", artist_name:"Blake Shelton", genre:"Country", popularity:70, energy:0.812, danceability:0.597, valence:0.603, loudness:-5.1, tempo:124.0},
+        {track_name:"Body Like A Back Road", artist_name:"Sam Hunt", genre:"Country", popularity:85, energy:0.63, danceability:0.82, valence:0.87, loudness:-6.0, tempo:99.9},
+        {track_name:"Shape of You", artist_name:"Ed Sheeran", genre:"Pop", popularity:95, energy:0.65, danceability:0.825, valence:0.6, loudness:-3.2, tempo:95.0},
+        {track_name:"Blinding Lights", artist_name:"The Weeknd", genre:"Pop", popularity:98, energy:0.73, danceability:0.79, valence:0.52, loudness:-5.0, tempo:171.0},
+        {track_name:"drivers license", artist_name:"Olivia Rodrigo", genre:"Pop", popularity:90, energy:0.36, danceability:0.54, valence:0.12, loudness:-7.4, tempo:144.0},
+        {track_name:"Numb", artist_name:"Linkin Park", genre:"Rock", popularity:88, energy:0.82, danceability:0.45, valence:0.42, loudness:-4.5, tempo:110.0},
+        {track_name:"Smells Like Teen Spirit", artist_name:"Nirvana", genre:"Rock", popularity:80, energy:0.9, danceability:0.52, valence:0.45, loudness:-5.6, tempo:117.0},
+        {track_name:"Everlong", artist_name:"Foo Fighters", genre:"Rock", popularity:75, energy:0.91, danceability:0.48, valence:0.6, loudness:-4.0, tempo:158.0},
+        {track_name:"HUMBLE.", artist_name:"Kendrick Lamar", genre:"Hip-Hop", popularity:92, energy:0.78, danceability:0.9, valence:0.44, loudness:-6.0, tempo:150.0},
+        {track_name:"SICKO MODE", artist_name:"Travis Scott", genre:"Hip-Hop", popularity:89, energy:0.72, danceability:0.8, valence:0.43, loudness:-5.5, tempo:155.0},
+        {track_name:"God's Plan", artist_name:"Drake", genre:"Hip-Hop", popularity:93, energy:0.58, danceability:0.79, valence:0.36, loudness:-9.0, tempo:153.0},
+        {track_name:"Sunflower", artist_name:"Post Malone", genre:"Hip-Hop", popularity:96, energy:0.52, danceability:0.76, valence:0.75, loudness:-4.9, tempo:90.0},
+        {track_name:"Wake Me Up", artist_name:"Avicii", genre:"EDM", popularity:94, energy:0.86, danceability:0.62, valence:0.61, loudness:-3.7, tempo:124.0},
+        {track_name:"Lean On", artist_name:"Major Lazer", genre:"EDM", popularity:88, energy:0.83, danceability:0.79, valence:0.53, loudness:-3.6, tempo:98.0},
+        {track_name:"Titanium", artist_name:"David Guetta", genre:"EDM", popularity:86, energy:0.88, danceability:0.61, valence:0.47, loudness:-4.1, tempo:126.0},
+        {track_name:"Take Five", artist_name:"The Dave Brubeck Quartet", genre:"Jazz", popularity:60, energy:0.42, danceability:0.63, valence:0.72, loudness:-13.0, tempo:174.0},
+        {track_name:"So What", artist_name:"Miles Davis", genre:"Jazz", popularity:55, energy:0.32, danceability:0.45, valence:0.5, loudness:-16.0, tempo:138.0},
+        {track_name:"Clair de Lune", artist_name:"Claude Debussy", genre:"Classical", popularity:50, energy:0.1, danceability:0.25, valence:0.3, loudness:-20.0, tempo:68.0},
+        {track_name:"Symphony No. 5", artist_name:"Ludwig van Beethoven", genre:"Classical", popularity:65, energy:0.62, danceability:0.22, valence:0.55, loudness:-14.0, tempo:108.0}
+    ];
+
+    // --------------------------------------------------
+    // 2. GLOBALS FOR CHARTS
+    // --------------------------------------------------
+    let scatterChart = null;
+    let histChart = null;
+    let modelChart = null;
+
+    // --------------------------------------------------
+    // 3. FILTERS / METRICS / TABLE
+    // --------------------------------------------------
+    function initFilters() {
+        const genreSelect = document.getElementById("genreSelect");
+        const genres = Array.from(new Set(rawData.map(d => d.genre))).sort();
+
+        genres.forEach(g => {
+            const opt = document.createElement("option");
+            opt.value = g;
+            opt.textContent = g;
+            genreSelect.appendChild(opt);
+        });
+
+        // Initial labels
+        document.getElementById("energyLabel").textContent =
+            (parseInt(document.getElementById("energyMin").value, 10) / 100).toFixed(2);
+        document.getElementById("valenceLabel").textContent =
+            (parseInt(document.getElementById("valenceMin").value, 10) / 100).toFixed(2);
+
+        genreSelect.addEventListener("change", updateView);
+        document.getElementById("energyMin").addEventListener("input", () => {
+            document.getElementById("energyLabel").textContent =
+                (parseInt(document.getElementById("energyMin").value, 10) / 100).toFixed(2);
+            updateView();
+        });
+        document.getElementById("valenceMin").addEventListener("input", () => {
+            document.getElementById("valenceLabel").textContent =
+                (parseInt(document.getElementById("valenceMin").value, 10) / 100).toFixed(2);
+            updateView();
+        });
+    }
+
+    function updateView() {
+        const selectedGenre = document.getElementById("genreSelect").value;
+        const energyMin = parseInt(document.getElementById("energyMin").value, 10) / 100;
+        const valenceMin = parseInt(document.getElementById("valenceMin").value, 10) / 100;
+
+        const filtered = rawData.filter(row => {
+            const genreOK = selectedGenre === "ALL" || row.genre === selectedGenre;
+            const energyOK = row.energy >= energyMin;
+            const valenceOK = row.valence >= valenceMin;
+            return genreOK && energyOK && valenceOK;
+        });
+
+        // Metrics
+        document.getElementById("metricTracks").textContent = filtered.length;
+        const genreCount = new Set(filtered.map(d => d.genre)).size;
+        document.getElementById("metricGenres").textContent = genreCount;
+        const avgPop = filtered.length
+            ? filtered.reduce((s, d) => s + d.popularity, 0) / filtered.length
+            : 0;
+        document.getElementById("metricPopularity").textContent = avgPop.toFixed(1);
+
+        // Table
+        updateTable(filtered);
+
+        // Charts
+        updateScatterChart(filtered);
+        updateHistChart(filtered);
+        updateModelChart(filtered);
+    }
+
+    function updateTable(rows) {
+        const tbody = document.getElementById("tableBody");
+        tbody.innerHTML = "";
+        rows.slice(0, 20).forEach(row => {
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+                <td>${row.track_name}</td>
+                <td>${row.artist_name}</td>
+                <td>${row.genre}</td>
+                <td>${row.energy.toFixed(2)}</td>
+                <td>${row.valence.toFixed(2)}</td>
+                <td>${row.popularity}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    // --------------------------------------------------
+    // 4. CHARTS
+    // --------------------------------------------------
+    function updateScatterChart(filtered) {
+        const ctx = document.getElementById("scatterChart");
+        const dataPoints = filtered.map(d => ({x: d.energy, y: d.popularity}));
+
+        const data = {
+            datasets: [{
+                label: "Tracks",
+                data: dataPoints,
+                pointRadius: 3
+            }]
+        };
+
+        const options = {
+            responsive: true,
+            scales: {
+                x: { title: { text: "Energy", display: true }, min: 0, max: 1 },
+                y: { title: { text: "Popularity", display: true }, min: 0, max: 100 }
+            },
+            plugins: { legend: { display: false } }
+        };
+
+        if (scatterChart) {
+            scatterChart.data = data;
+            scatterChart.options = options;
+            scatterChart.update();
+        } else {
+            scatterChart = new Chart(ctx, { type: "scatter", data, options });
+        }
+    }
+
+    function updateHistChart(filtered) {
+        const ctx = document.getElementById("histChart");
+        const bins = new Array(10).fill(0);
+        filtered.forEach(d => {
+            const idx = Math.min(9, Math.floor(d.popularity / 10));
+            bins[idx] += 1;
+        });
+
+        const labels = ["0–9","10–19","20–29","30–39","40–49","50–59","60–69","70–79","80–89","90–100"];
+
+        const data = {
+            labels,
+            datasets: [{ label: "Track count", data: bins }]
+        };
+
+        const options = {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { title: { text: "Popularity bucket", display: true } },
+                y: { title: { text: "Count", display: true }, beginAtZero: true }
+            }
+        };
+
+        if (histChart) {
+            histChart.data = data;
+            histChart.options = options;
+            histChart.update();
+        } else {
+            histChart = new Chart(ctx, { type: "bar", data, options });
+        }
+    }
+
+    // Simple "model" comparison: global mean vs genre mean popularity
+    function updateModelChart(filtered) {
+        const ctx = document.getElementById("modelChart");
+        if (!filtered.length) {
+            if (modelChart) modelChart.destroy();
+            modelChart = null;
+            return;
+        }
+
+        const globalMean = filtered.reduce((s, d) => s + d.popularity, 0) / filtered.length;
+
+        const genreStats = {};
+        filtered.forEach(d => {
+            if (!genreStats[d.genre]) genreStats[d.genre] = {sum: 0, count: 0};
+            genreStats[d.genre].sum += d.popularity;
+            genreStats[d.genre].count += 1;
+        });
+
+        let genres = Object.keys(genreStats);
+        // sort by count (most frequent genres first)
+        genres.sort((a, b) => genreStats[b].count - genreStats[a].count);
+        genres = genres.slice(0, 6); // limit to top 6
+
+        const genreMeans = genres.map(g => genreStats[g].sum / genreStats[g].count);
+        const baseline = genres.map(() => globalMean);
+
+        const data = {
+            labels: genres,
+            datasets: [
+                { label: "Baseline: global mean", data: baseline },
+                { label: "Genre model: genre mean", data: genreMeans }
+            ]
+        };
+
+        const options = {
+            responsive: true,
+            scales: {
+                y: { min: 0, max: 100, title: { display: true, text: "Popularity" } }
+            }
+        };
+
+        if (modelChart) {
+            modelChart.data = data;
+            modelChart.options = options;
+            modelChart.update();
+        } else {
+            modelChart = new Chart(ctx, { type: "bar", data, options });
+        }
+    }
+
+    // --------------------------------------------------
+    // 5. INITIALISE
+    // --------------------------------------------------
+    window.addEventListener("load", () => {
+        initFilters();
+        updateView();
+    });
+</script>
+</body>
+</html>
